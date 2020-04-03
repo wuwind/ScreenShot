@@ -17,7 +17,11 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.Surface;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -87,23 +91,53 @@ public class ScreenRecordService extends Service {
 
     private AtomicBoolean mQuit = new AtomicBoolean(false);
     private MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
+    public byte[] configbyte;
+
     private void recordVirtualDisplay() {
         while (!mQuit.get()) {
             int eobIndex = mEncoder.dequeueOutputBuffer(mBufferInfo, TIMEOUT_US);
             switch (eobIndex) {
                 case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                    Log.d(TAG,"VideoSenderThread,MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED");
+                    Log.d(TAG, "VideoSenderThread,MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED");
                     break;
                 case MediaCodec.INFO_TRY_AGAIN_LATER:
 //                    LogTools.d("VideoSenderThread,MediaCodec.INFO_TRY_AGAIN_LATER");
                     break;
                 case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
-                    Log.d(TAG,"VideoSenderThread,MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:" +
+                    Log.d(TAG, "VideoSenderThread,MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:" +
                             mEncoder.getOutputFormat().toString());
 //                    sendAVCDecoderConfigurationRecord(0, mEncoder.getOutputFormat());
                     break;
                 default:
-                    Log.d(TAG,"VideoSenderThread,MediaCode,eobIndex=" + eobIndex);
+                    Log.d(TAG, "VideoSenderThread,MediaCode,eobIndex=" + eobIndex);
+                    Log.d(TAG, "VideoSenderThread,MediaCode,mBufferInfo.flags=" + mBufferInfo.flags);
+                    Log.d(TAG, "VideoSenderThread,MediaCode,mBufferInfo.size=" + mBufferInfo.size);
+                    Log.d(TAG, "VideoSenderThread,MediaCode,mBufferInfo.offset=" + mBufferInfo.offset);
+
+
+                    ByteBuffer outputBuffer = mEncoder.getOutputBuffers()[eobIndex];
+                    byte[] outData = new byte[mBufferInfo.size];
+                    outputBuffer.get(outData);
+                    if (mBufferInfo.flags == 2) {
+                        configbyte = new byte[mBufferInfo.size];
+                        configbyte = outData;
+                    } else if (mBufferInfo.flags == 1) {
+                        byte[] keyframe = new byte[mBufferInfo.size + configbyte.length];
+                        System.arraycopy(configbyte, 0, keyframe, 0, configbyte.length);
+                        System.arraycopy(outData, 0, keyframe, configbyte.length, outData.length);
+//                        MainActivity.putData(keyframe,1,mBufferInfo.presentationTimeUs*1000L);
+//                        if(outputStream != null){
+//                            outputStream.write(keyframe, 0, keyframe.length);
+//                        }
+                        save(keyframe);
+                    } else {
+//                        MainActivity.putData(outData,2,mBufferInfo.presentationTimeUs*1000L);
+//                        if(outputStream != null){
+//                            outputStream.write(outData, 0, outData.length);
+//                        }
+                        save(outData);
+                    }
+
 //                    if (startTime == 0) {
 //                        startTime = mBufferInfo.presentationTimeUs / 1000;
 //                    }
@@ -115,12 +149,59 @@ public class ScreenRecordService extends Service {
 //                        ByteBuffer realData = mEncoder.getOutputBuffers()[eobIndex];
 //                        realData.position(mBufferInfo.offset + 4);
 //                        realData.limit(mBufferInfo.offset + mBufferInfo.size);
-//                        sendRealData((mBufferInfo.presentationTimeUs / 1000) - startTime, realData);
+//                        byte[] datas = new byte[mBufferInfo.size];
+//                        realData.get(datas);
+//                        save(datas);
+////                        sendRealData((mBufferInfo.presentationTimeUs / 1000) - startTime, realData);
 //                    }
                     mEncoder.releaseOutputBuffer(eobIndex, false);
                     break;
             }
         }
+    }
+
+    FileOutputStream out;
+    long time;
+
+    private boolean save(byte[] bytes) {
+        try {
+            if (out == null) {
+                File f = new File(Environment.getExternalStoragePublicDirectory("Movies") + "/1.h264");
+                if (f.exists()) {
+                    f.delete();
+                    try {
+                        f.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                out = new FileOutputStream(f);
+                time = System.currentTimeMillis();
+                Log.e(TAG, "--------save-----------" + f.getAbsolutePath());
+            }
+            if (System.currentTimeMillis() - time > 10000) {
+                out.flush();
+                out.close();
+                Log.e(TAG, "--------close-----------");
+                return false;
+            }
+            out.write(bytes);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            try {
+                out.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            try {
+                out.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+        return true;
     }
 
     private MediaProjection createMediaProjection() {
@@ -186,9 +267,12 @@ public class ScreenRecordService extends Service {
     private void prepareEncoder() throws IOException {
         MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, mScreenWidth, mScreenHeight);
         format.setInteger(MediaFormat.KEY_BIT_RATE, 6000000);
+//        format.setInteger(MediaFormat.KEY_BIT_RATE, mScreenWidth*mScreenHeight);
         format.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE);
+//        format.setInteger(MediaFormat.KEY_FRAME_RATE, 20);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL);
+//        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         Log.d(TAG, "created video format: " + format);
         mEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
         mEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -202,7 +286,7 @@ public class ScreenRecordService extends Service {
     private VirtualDisplay createVirtualDisplay() {
         Log.i(TAG, "Create VirtualDisplay");
         return mMediaProjection.createVirtualDisplay(TAG, mScreenWidth, mScreenHeight, mScreenDensity,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mSurface, null, null);
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC, mSurface, null, null);
 //                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mMediaRecorder.getSurface(), null, null);
     }
 

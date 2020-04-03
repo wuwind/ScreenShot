@@ -77,6 +77,7 @@ public class VideoMediaCodec extends MediaCodecBase {
             mEncoder = MediaCodec.createEncoderByType(Constant.MIME_TYPE);
             mEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             mSurface = mEncoder.createInputSurface();
+
             mEncoder.start();
         }catch (IOException e){
 
