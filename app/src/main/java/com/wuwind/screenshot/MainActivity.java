@@ -1,14 +1,17 @@
 package com.wuwind.screenshot;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.KeyEvent;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -18,7 +21,9 @@ import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
+import com.libwuwind.player.VideoUtils;
 import com.wuwind.screenshot.services.ScreenRecordService;
 
 public class MainActivity extends AppCompatActivity {
@@ -58,15 +63,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean isAudio = true;
 
     // Used to load the 'native-lib' library on application startup.
-    static {
-        System.loadLibrary("native-lib");
-    }
+
+    SurfaceView surface;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
+        surface = findViewById(R.id.surface);
         if (savedInstanceState != null) {
             isStarted = savedInstanceState.getBoolean(RECORD_STATUS);
         }
@@ -76,10 +81,41 @@ public class MainActivity extends AppCompatActivity {
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
         }, 1);
+        checkPermission(this);
     }
 
+    private void checkPermission(Activity activity) {
+        // Storage Permissions
+        final int REQUEST_EXTERNAL_STORAGE = 1;
+        String[] PERMISSIONS_STORAGE = {
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+        try {
+            //检测是否有写的权限
+            int permission = ActivityCompat.checkSelfPermission(this,
+                    "android.permission.WRITE_EXTERNAL_STORAGE");
+            if (permission != PackageManager.PERMISSION_GRANTED) {
+                // 没有写的权限，去申请写的权限，会弹出对话框
+                ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
 
     private void getView() {
+        findViewById(R.id.play).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                String path = Environment.getExternalStoragePublicDirectory("Movies") + "/2.h264";
+//                VideoUtils.play(path,surface.getHolder().getSurface());
+//                ScreenRecordService.time = 0;
+//                VideoUtils.show();
+                startScreenRecording();
+            }
+        });
         mTextView = (TextView) findViewById(R.id.button_control);
         if (isStarted) {
             statusIsStarted();
@@ -91,13 +127,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 // TODO Auto-generated method stub
-                if (isStarted) {
-                    stopScreenRecording();
-                    statusIsStoped();
-                    Log.i(TAG, "Stoped screen recording");
-                } else {
-                    startScreenRecording();
-                }
+//                if (isStarted) {
+//                    stopScreenRecording();
+//                    statusIsStoped();
+//                    Log.i(TAG, "Stoped screen recording");
+//                } else {
+//                    startScreenRecording();
+//                }
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String path = Environment.getExternalStorageDirectory() + "/1.h264";
+                        VideoUtils.init(surface.getHolder().getSurface());
+                    }
+                }).start();
+
+//                startScreenRecording();
+
             }
         });
 
@@ -221,14 +267,14 @@ public class MainActivity extends AppCompatActivity {
 //        this.startActivity(intent);
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // 在这里将BACK键模拟了HOME键的返回桌面功能（并无必要）
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            simulateHome();
-            return true;
-        }
-        return super.onKeyDown(keyCode, event);
-    }
+//    @Override
+//    public boolean onKeyDown(int keyCode, KeyEvent event) {
+//        // 在这里将BACK键模拟了HOME键的返回桌面功能（并无必要）
+//        if (keyCode == KeyEvent.KEYCODE_BACK) {
+//            simulateHome();
+//            return true;
+//        }
+//        return super.onKeyDown(keyCode, event);
+//    }
 
 }

@@ -17,8 +17,8 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.Surface;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import com.libwuwind.player.VideoUtils;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -130,6 +130,7 @@ public class ScreenRecordService extends Service {
 //                            outputStream.write(keyframe, 0, keyframe.length);
 //                        }
                         save(keyframe);
+                        Log.e(TAG, "keyframe");
                     } else {
 //                        MainActivity.putData(outData,2,mBufferInfo.presentationTimeUs*1000L);
 //                        if(outputStream != null){
@@ -161,46 +162,56 @@ public class ScreenRecordService extends Service {
     }
 
     FileOutputStream out;
-    long time;
+    public static long time;
 
     private boolean save(byte[] bytes) {
-        try {
-            if (out == null) {
-                File f = new File(Environment.getExternalStoragePublicDirectory("Movies") + "/1.h264");
-                if (f.exists()) {
-                    f.delete();
-                    try {
-                        f.createNewFile();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                out = new FileOutputStream(f);
-                time = System.currentTimeMillis();
-                Log.e(TAG, "--------save-----------" + f.getAbsolutePath());
-            }
-            if (System.currentTimeMillis() - time > 10000) {
-                out.flush();
-                out.close();
-                Log.e(TAG, "--------close-----------");
-                return false;
-            }
-            out.write(bytes);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            try {
-                out.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            try {
-                out.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        }
+
+//        if(time > 0) {
+////            Log.e(TAG, "save-----------:"+bytes.length);
+////            Log.e(TAG, "save-----------:"+bytes[0]+"  "+bytes[bytes.length-1]);
+//            return false;
+//        }
+            time ++;
+            VideoUtils.input(bytes);
+
+//        try {
+//            if (out == null) {
+//                File f = new File(Environment.getExternalStoragePublicDirectory("Movies") + "/2.h264");
+//                if (f.exists()) {
+//                    f.delete();
+//                    try {
+//                        f.createNewFile();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//                out = new FileOutputStream(f);
+//                time = System.currentTimeMillis();
+//                Log.e(TAG, "--------save-----------" + f.getAbsolutePath());
+//            }
+//            if (System.currentTimeMillis() - time > 10000) {
+//                out.flush();
+//                out.close();
+//                Log.e(TAG, "--------close-----------");
+//                return false;
+//            }
+//            out.write(bytes);
+//            VideoUtils.input(bytes);
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//            try {
+//                out.close();
+//            } catch (IOException ex) {
+//                ex.printStackTrace();
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            try {
+//                out.close();
+//            } catch (IOException ex) {
+//                ex.printStackTrace();
+//            }
+//        }
         return true;
     }
 

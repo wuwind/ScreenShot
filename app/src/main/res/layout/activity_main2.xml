@@ -11,6 +11,7 @@
     <RadioGroup
         android:id="@+id/radio_group"
         android:layout_width="wrap_content"
+        android:visibility="gone"
         android:layout_height="wrap_content">
         <RadioButton
             android:id="@+id/sd_button"
@@ -27,12 +28,23 @@
     <CheckBox
         android:layout_width="wrap_content"
         android:text="声音"
+        android:visibility="gone"
         android:id="@+id/audio_check_box"
         android:layout_height="wrap_content"/>
 
     <Button
         android:id="@+id/button_control"
         android:layout_width="match_parent"
+        android:text="init"
         android:layout_height="wrap_content"/>
 
+    <Button
+        android:id="@+id/play"
+        android:layout_width="match_parent"
+        android:text="play"
+        android:layout_height="wrap_content"/>
+    <SurfaceView
+        android:id="@+id/surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
 </LinearLayout>
