@@ -32,13 +32,15 @@
 #define LOGI(FORMAT, ...) __android_log_print(ANDROID_LOG_INFO, "wuhf",  FORMAT, ##__VA_ARGS__)
 
 #define MAX_STREAM 4
+#define BUF_SIZE 32768
 
-#define MIN_SLEEP_TIME_US 1000ll
-#define AUDIO_TIME_ADJUST_US -200000ll
 
 char *chars = NULL;
 int chars_len = 0;
-
+int init = 0;
+Queue *srcQueue;
+pthread_mutex_t mutexSrc;
+pthread_cond_t condSrc;
 
 typedef struct Player {
     AVFormatContext *input_format_ctx;
@@ -75,6 +77,11 @@ typedef struct Player {
     int64_t audio_clock;
 } Player;
 
+typedef struct SrcData {
+    int len;
+    char *chars;
+} SrcData;
+
 typedef struct DecoderData {
     Player *player;
     int index;
@@ -87,10 +94,16 @@ void *player_fill_func() {
     return pkt;
 }
 
+void *src_fill_func() {
+    SrcData *srcData = av_malloc(sizeof(SrcData));
+    return srcData;
+}
+
 void init_queue(struct Player *player) {
     for (int i = 0; i < player->stream_no; ++i) {
         player->queues[i] = queue_init(50, player_fill_func);
     }
+    srcQueue = queue_init(50, src_fill_func);
 }
 
 
@@ -105,11 +118,13 @@ int count = 0;
 int fill_iobuffer(void *opaque, uint8_t *buf, int buf_size) {
 //    LOGE("read %d  %d", chars[0], chars[chars_len- 1]);
     int ret = 0;
-    if (count < 155 && chars_len > 0) {
-        count++;
-        ret = chars_len;
-        chars_len = -1;
-        memcpy(buf, chars, (size_t) ret);
+    if(NULL != srcQueue) {
+        SrcData *q = queue_pop(srcQueue, &mutexSrc, &condSrc);
+        if (NULL != q) {
+            count++;
+            ret = q->len;
+            memcpy(buf, q->chars, (size_t) ret);
+        }
     }
     if (ret > 0) {
         LOGE("fill_iobuffer ret %d count %d", ret, count);
@@ -122,8 +137,8 @@ void init_input_format_ctx(struct Player *player) {
     //1.注册所有组件
     av_register_all();
 
-    unsigned char *iobuffer = (unsigned char *) av_malloc(32768);
-    AVIOContext *avio = avio_alloc_context(iobuffer, 32768, 0, NULL, fill_iobuffer, NULL, NULL);
+    unsigned char *iobuffer = (unsigned char *) av_malloc(BUF_SIZE);
+    AVIOContext *avio = avio_alloc_context(iobuffer, BUF_SIZE, 0, NULL, fill_iobuffer, NULL, NULL);
 
     if (avio == NULL) {
         LOGE("%s", "avio == NULL");
@@ -364,37 +379,48 @@ JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_show(JNIEnv *env, jc
 JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_input(JNIEnv *env,
                                                                   jclass jcls,
                                                                   jbyteArray bytearray) {
-//    if(chars_len != 0) {
-//        LOGE("input chars_len != 0 %d", chars_len);
-//        return;
-//    }
+    if (!init) {
+        LOGI("%s", "init first please");
+        return;
+    }
+    pthread_mutex_lock(&mutexSrc);
     jbyte *bytes = (*env)->GetByteArrayElements(env, bytearray, 0);
     int len = (*env)->GetArrayLength(env, bytearray);
-    memcpy(chars, bytes, (size_t) len);
-//    for(int i=0;i<len;i++) {
-//        *(chars+i)=(*(bytes+i));
-//    }
-
     LOGE("len %d", len);
-    LOGE("write %d   %d   %d", bytes[0], bytes[len - 1], bytes[len - 2], bytes[len - 3]);
-    LOGE("write chars %d  %d   %d", chars[0], chars[len - 1], chars[len - 2], chars[len - 3]);
-    chars_len = len;
-//    (*env)->ReleaseByteArrayElements(env, bytearray, bytes, 0);
+    int t = len / BUF_SIZE;
+    for (int i = 0; i < t; ++i) {
+        SrcData *q = queue_push(srcQueue, &mutexSrc, &condSrc);
+        q->len = BUF_SIZE;
+        q->chars =  malloc(BUF_SIZE * sizeof(char));
+        memcpy(q->chars, bytes + (i * BUF_SIZE), (size_t) BUF_SIZE);
+    }
+    SrcData *q = queue_push(srcQueue, &mutexSrc,  &condSrc);
+    q->len = BUF_SIZE;
+    q->chars =  malloc(BUF_SIZE * sizeof(char));
+    memcpy(q->chars, bytes + (t * BUF_SIZE), (size_t) len - (t * BUF_SIZE));
+
+//    LOGE("write %d   %d   %d", bytes[0], bytes[len - 1], bytes[len - 2], bytes[len - 3]);
+//    LOGE("write chars %d  %d   %d", chars[0], chars[len - 1], chars[len - 2], chars[len - 3]);
+//    chars_len = len;
+    (*env)->ReleaseByteArrayElements(env, bytearray, bytes, 0);
+    pthread_mutex_unlock(&mutexSrc);
     //release
 }
 
 JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_init(JNIEnv *env,
                                                                  jclass jcls,
                                                                  jobject surface) {
-
-    chars = malloc(32768 * sizeof(char));
+    if (init) {
+        LOGI("%s", "is init return");
+        return;
+    }
+    init = 1;
 
     //需要转码的视频文件(输入的视频文件)
 //    const char *input_cstr = (*env)->GetStringUTFChars(env, input_jstr, NULL);
 
     player = malloc(sizeof(struct Player));
     (*env)->GetJavaVM(env, &(player->javaVM));
-
 
     init_input_format_ctx(player);
     init_queue(player);
@@ -408,6 +434,8 @@ JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_init(JNIEnv *env,
 
     pthread_mutex_init(&player->mutex, NULL);
     pthread_cond_init(&player->cond, NULL);
+    pthread_mutex_init(&mutexSrc, NULL);
+    pthread_cond_init(&condSrc, NULL);
     player->start_time = 0;
 
     //创建读线程

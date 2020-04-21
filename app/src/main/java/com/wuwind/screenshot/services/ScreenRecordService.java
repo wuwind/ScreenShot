@@ -18,6 +18,7 @@ import android.util.Log;
 import android.view.Surface;
 
 import com.libwuwind.player.VideoUtils;
+import com.wuwind.conn.TcpSendThread;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -48,6 +49,8 @@ public class ScreenRecordService extends Service {
     private MediaRecorder mMediaRecorder;
     private VirtualDisplay mVirtualDisplay;
 
+    private TcpSendThread tcpSendThread;
+
     private MediaCodec mEncoder;
     private Surface mSurface;
 
@@ -69,6 +72,13 @@ public class ScreenRecordService extends Service {
         isVideoSd = intent.getBooleanExtra("quality", true);
         isAudio = intent.getBooleanExtra("audio", true);
 
+        tcpSendThread = new TcpSendThread(new TcpSendThread.OnConnCallBack() {
+            @Override
+            public void onConnSuccess(String ip) {
+                Log.i(TAG, "TcpSendThread onConnSuccess");
+            }
+        });
+        tcpSendThread.start();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -113,7 +123,6 @@ public class ScreenRecordService extends Service {
                     Log.d(TAG, "VideoSenderThread,MediaCode,mBufferInfo.flags=" + mBufferInfo.flags);
                     Log.d(TAG, "VideoSenderThread,MediaCode,mBufferInfo.size=" + mBufferInfo.size);
                     Log.d(TAG, "VideoSenderThread,MediaCode,mBufferInfo.offset=" + mBufferInfo.offset);
-
 
                     ByteBuffer outputBuffer = mEncoder.getOutputBuffers()[eobIndex];
                     byte[] outData = new byte[mBufferInfo.size];
@@ -162,17 +171,22 @@ public class ScreenRecordService extends Service {
     }
 
     FileOutputStream out;
-    public static long time;
+    public long time;
+    public boolean isPause = false;
 
     private boolean save(byte[] bytes) {
-
+//        MainActivity.onFrame(bytes);
 //        if(time > 0) {
 ////            Log.e(TAG, "save-----------:"+bytes.length);
 ////            Log.e(TAG, "save-----------:"+bytes[0]+"  "+bytes[bytes.length-1]);
 //            return false;
 //        }
+//        if(isPause) {
+//            return false;
+//        }
             time ++;
-            VideoUtils.input(bytes);
+        tcpSendThread.sendMessage(bytes);
+//            VideoUtils.input(bytes);
 
 //        try {
 //            if (out == null) {

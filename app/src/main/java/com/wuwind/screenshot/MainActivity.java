@@ -5,12 +5,19 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.media.MediaCodec;
+import android.media.MediaFormat;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Surface;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.CheckBox;
@@ -26,7 +33,10 @@ import androidx.core.app.ActivityCompat;
 import com.libwuwind.player.VideoUtils;
 import com.wuwind.screenshot.services.ScreenRecordService;
 
-public class MainActivity extends AppCompatActivity {
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback {
 
     /**
      * A native method that is implemented by the 'native-lib' native library,
@@ -64,7 +74,8 @@ public class MainActivity extends AppCompatActivity {
 
     // Used to load the 'native-lib' library on application startup.
 
-    SurfaceView surface;
+    private SurfaceView surface;
+    private static MediaCodec decoder;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -72,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
         surface = findViewById(R.id.surface);
+        surface.getHolder().addCallback(this);
         if (savedInstanceState != null) {
             isStarted = savedInstanceState.getBoolean(RECORD_STATUS);
         }
@@ -116,7 +128,32 @@ public class MainActivity extends AppCompatActivity {
                 startScreenRecording();
             }
         });
-        mTextView = (TextView) findViewById(R.id.button_control);
+        findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                ScreenRecordService.isPause = !ScreenRecordService.isPause;
+            }
+        });
+        findViewById(R.id.clear).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                decoder.stop();
+                clearDraw();
+            }
+        });
+        findViewById(R.id.stop_record).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stopScreenRecording();
+            }
+        });
+        findViewById(R.id.home).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
+            }
+        });
+        mTextView = (TextView) findViewById(R.id.init);
         if (isStarted) {
             statusIsStarted();
         } else {
@@ -126,23 +163,16 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onClick(View v) {
-                // TODO Auto-generated method stub
-//                if (isStarted) {
-//                    stopScreenRecording();
-//                    statusIsStoped();
-//                    Log.i(TAG, "Stoped screen recording");
-//                } else {
-//                    startScreenRecording();
-//                }
+
+//                initMediaDecoder(surface.getHolder().getSurface());
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        String path = Environment.getExternalStorageDirectory() + "/1.h264";
+//                        String path = Environment.getExternalStorageDirectory() + "/1.h264";
                         VideoUtils.init(surface.getHolder().getSurface());
+
                     }
                 }).start();
-
-//                startScreenRecording();
 
             }
         });
@@ -178,11 +208,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public void clearDraw() {
+        Canvas canvas = null;
+        try {
+            canvas = surface.getHolder().lockCanvas(null);
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            Paint p = new Paint();
+            canvas.drawColor(Color.WHITE, PorterDuff.Mode.SRC);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (canvas != null) {
+                surface.getHolder().unlockCanvasAndPost(canvas);
+            }
+        }
+    }
+
     /**
      * 开启屏幕录制时的UI状态
      */
     private void statusIsStarted() {
-        mTextView.setText("stop");
+//        mTextView.setText("stop");
 //        mTextView.setBackgroundDrawable(getResources().getDrawable(R.drawable.selector_red_bg));
     }
 
@@ -190,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
      * 结束屏幕录制后的UI状态
      */
     private void statusIsStoped() {
-        mTextView.setText("start");
+//        mTextView.setText("start");
 //        mTextView.setBackgroundDrawable(getResources().getDrawable(R.drawable.selector_green_bg));
     }
 
@@ -265,6 +311,56 @@ public class MainActivity extends AppCompatActivity {
 //        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 //        intent.addCategory(Intent.CATEGORY_HOME);
 //        this.startActivity(intent);
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+
+    }
+
+    private static int mCount = 0;
+    private static int TIME_INTERNAL = 1000;
+
+    public static void onFrame(byte[] buf) {
+        if (null == decoder)
+            return;
+        ByteBuffer[] inputBuffers = decoder.getInputBuffers();
+        int inputBufferIndex = decoder.dequeueInputBuffer(0);
+        if (inputBufferIndex >= 0) {
+            ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
+            inputBuffer.clear();
+            inputBuffer.put(buf, 0, buf.length);
+            decoder.queueInputBuffer(inputBufferIndex, 0, buf.length, mCount * 1000000 / TIME_INTERNAL, 0);
+            mCount++;
+        }
+
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        int outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 0);
+        while (outputBufferIndex >= 0) {
+            decoder.releaseOutputBuffer(outputBufferIndex, true);
+            outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 0);
+        }
+    }
+
+    private void initMediaDecoder(Surface surface) {
+        MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, 1280, 720);
+        try {
+            decoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+            decoder.configure(mediaFormat, surface, null, 0);
+            decoder.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 //    @Override

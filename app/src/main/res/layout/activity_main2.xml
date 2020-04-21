@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"/>
 
     <Button
-        android:id="@+id/button_control"
+        android:id="@+id/init"
         android:layout_width="match_parent"
         android:text="init"
         android:layout_height="wrap_content"/>
@@ -41,7 +41,27 @@
     <Button
         android:id="@+id/play"
         android:layout_width="match_parent"
-        android:text="play"
+        android:text="record"
+        android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/stop_record"
+        android:layout_width="match_parent"
+        android:text="stop_record"
+        android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/start"
+        android:layout_width="match_parent"
+        android:text="start"
+        android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/clear"
+        android:layout_width="match_parent"
+        android:text="clear"
+        android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/home"
+        android:layout_width="match_parent"
+        android:text="home"
         android:layout_height="wrap_content"/>
     <SurfaceView
         android:id="@+id/surface"
