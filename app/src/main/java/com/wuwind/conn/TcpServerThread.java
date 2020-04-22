@@ -18,8 +18,8 @@ public class TcpServerThread extends Thread {
     private final int PORT=6111;
     private BufferedInputStream dataInputStream;
     private onFrameCallBack callBack;
-    private long timer_size;
     private boolean isStart=true;
+    private long timer_size;
     private Timer timer=new Timer();
     private TimerTask timerTask=new TimerTask() {
         @Override

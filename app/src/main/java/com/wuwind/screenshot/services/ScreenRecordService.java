@@ -17,8 +17,7 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.Surface;
 
-import com.libwuwind.player.VideoUtils;
-import com.wuwind.conn.TcpSendThread;
+import com.wuwind.conn.TcpDataServerThread;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -49,8 +48,8 @@ public class ScreenRecordService extends Service {
     private MediaRecorder mMediaRecorder;
     private VirtualDisplay mVirtualDisplay;
 
-    private TcpSendThread tcpSendThread;
-
+//    private TcpSendThread tcpSendThread;
+    private TcpDataServerThread tcpSendThread;
     private MediaCodec mEncoder;
     private Surface mSurface;
 
@@ -72,13 +71,9 @@ public class ScreenRecordService extends Service {
         isVideoSd = intent.getBooleanExtra("quality", true);
         isAudio = intent.getBooleanExtra("audio", true);
 
-        tcpSendThread = new TcpSendThread(new TcpSendThread.OnConnCallBack() {
-            @Override
-            public void onConnSuccess(String ip) {
-                Log.i(TAG, "TcpSendThread onConnSuccess");
-            }
-        });
+        tcpSendThread = new TcpDataServerThread();
         tcpSendThread.start();
+
         new Thread(new Runnable() {
             @Override
             public void run() {

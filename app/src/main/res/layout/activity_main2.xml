@@ -49,9 +49,9 @@
         android:text="stop_record"
         android:layout_height="wrap_content"/>
     <Button
-        android:id="@+id/start"
+        android:id="@+id/start_thread"
         android:layout_width="match_parent"
-        android:text="start"
+        android:text="start_thread"
         android:layout_height="wrap_content"/>
     <Button
         android:id="@+id/clear"

@@ -6,7 +6,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import com.libwuwind.player.VideoUtils;
-import com.wuwind.conn.TcpServerThread;
+import com.wuwind.conn.TcpClientThread;
 
 public class ServerActivity extends Activity {
 
@@ -40,9 +40,10 @@ public class ServerActivity extends Activity {
             }
         });
 
-        new TcpServerThread(new TcpServerThread.onFrameCallBack() {
+
+        new TcpClientThread(new TcpClientThread.onFrameCallBack() {
             @Override
-            public void onFrame(final byte[] data) {
+            public void onFrame(byte[] data) {
                 VideoUtils.input(data);
             }
         }).start();

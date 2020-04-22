@@ -128,10 +128,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 startScreenRecording();
             }
         });
-        findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.start_thread).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                ScreenRecordService.isPause = !ScreenRecordService.isPause;
+
             }
         });
         findViewById(R.id.clear).setOnClickListener(new View.OnClickListener() {
