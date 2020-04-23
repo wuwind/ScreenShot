@@ -31,6 +31,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.libwuwind.player.VideoUtils;
+import com.wuwind.conn.FrpcManager;
 import com.wuwind.screenshot.services.ScreenRecordService;
 
 import java.io.IOException;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
+
         surface = findViewById(R.id.surface);
         surface.getHolder().addCallback(this);
         if (savedInstanceState != null) {
@@ -147,10 +149,19 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 stopScreenRecording();
             }
         });
+        findViewById(R.id.frpc_start).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new FrpcManager(MainActivity.this).frpStart();
+            }
+        });
         findViewById(R.id.home).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onBackPressed();
+                Intent intent = new Intent(Intent.ACTION_MAIN);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.addCategory(Intent.CATEGORY_HOME);
+                startActivity(intent);
             }
         });
         mTextView = (TextView) findViewById(R.id.init);

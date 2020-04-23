@@ -8,6 +8,8 @@ struct _Queue {
     void **tab;
 
     int current;
+
+    int release;
 };
 
 Queue *queue_init(int size, queue_fill_func fill_func) {
@@ -16,6 +18,7 @@ Queue *queue_init(int size, queue_fill_func fill_func) {
     queue->next_to_read = 0;
     queue->next_to_write = 0;
     queue->current = 0;
+    queue->release = 0;
     queue->tab = malloc(sizeof(*queue->tab) * size);
     for (int i = 0; i < size; ++i) {
         queue->tab[i] = fill_func();
@@ -33,7 +36,7 @@ void *queue_push(Queue *queue, pthread_mutex_t* mutex, pthread_cond_t* cond) {
     int next_to_write;
     for (;;) {
         next_to_write = queue_get_next(queue, current);
-        if (next_to_write != queue->next_to_read)
+        if (next_to_write != queue->next_to_read || queue->release)
             break;
         LOGI("queue_push wait %d ", queue->current);
         pthread_cond_wait(cond, mutex);
@@ -52,7 +55,7 @@ void *queue_pop(Queue *queue,pthread_mutex_t* mutex, pthread_cond_t* cond) {
     int current = queue->next_to_read;
     for (;;) {
         //下一个要读的位置等于下一个要写的，等写完，在读
-        if (queue->next_to_read != queue->next_to_write)
+        if (queue->next_to_read != queue->next_to_write || queue->release)
             break;
         LOGI("queue_pop wait %d ", queue->current);
         pthread_cond_wait(cond, mutex);
@@ -64,4 +67,9 @@ void *queue_pop(Queue *queue,pthread_mutex_t* mutex, pthread_cond_t* cond) {
     LOGI("pop %d", current);
     pthread_cond_broadcast(cond);
     return queue->tab[current];
+}
+
+void queue_release(Queue *queue,pthread_mutex_t* mutex, pthread_cond_t* cond) {
+    queue->release = 1;
+    pthread_cond_broadcast(cond);
 }

@@ -11,60 +11,73 @@
     <RadioGroup
         android:id="@+id/radio_group"
         android:layout_width="wrap_content"
-        android:visibility="gone"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:visibility="gone">
+
         <RadioButton
             android:id="@+id/sd_button"
             android:layout_width="wrap_content"
-            android:text="标清SD"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:text="标清SD" />
+
         <RadioButton
             android:id="@+id/hd_button"
             android:layout_width="wrap_content"
-            android:text="高清HD"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:text="高清HD" />
     </RadioGroup>
 
     <CheckBox
-        android:layout_width="wrap_content"
-        android:text="声音"
-        android:visibility="gone"
         android:id="@+id/audio_check_box"
-        android:layout_height="wrap_content"/>
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="声音"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/init"
         android:layout_width="match_parent"
-        android:text="init"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="init" />
 
     <Button
         android:id="@+id/play"
         android:layout_width="match_parent"
-        android:text="record"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="record" />
+
     <Button
         android:id="@+id/stop_record"
         android:layout_width="match_parent"
-        android:text="stop_record"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="stop_record" />
+
     <Button
         android:id="@+id/start_thread"
         android:layout_width="match_parent"
-        android:text="start_thread"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="start_thread" />
+
     <Button
         android:id="@+id/clear"
         android:layout_width="match_parent"
-        android:text="clear"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="clear" />
+
     <Button
         android:id="@+id/home"
         android:layout_width="match_parent"
-        android:text="home"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="home" />
+
+    <Button
+        android:id="@+id/frpc_start"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="frpc_start" />
+
     <SurfaceView
         android:id="@+id/surface"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent" />
 </LinearLayout>

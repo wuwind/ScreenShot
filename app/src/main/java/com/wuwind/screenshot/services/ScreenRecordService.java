@@ -159,7 +159,11 @@ public class ScreenRecordService extends Service {
 //                        save(datas);
 ////                        sendRealData((mBufferInfo.presentationTimeUs / 1000) - startTime, realData);
 //                    }
-                    mEncoder.releaseOutputBuffer(eobIndex, false);
+                    try{
+                        mEncoder.releaseOutputBuffer(eobIndex, false);
+                    }  catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     break;
             }
         }

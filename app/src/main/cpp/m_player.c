@@ -41,6 +41,7 @@ int init = 0;
 Queue *srcQueue;
 pthread_mutex_t mutexSrc;
 pthread_cond_t condSrc;
+int running = 0;
 
 typedef struct Player {
     AVFormatContext *input_format_ctx;
@@ -118,7 +119,7 @@ int count = 0;
 int fill_iobuffer(void *opaque, uint8_t *buf, int buf_size) {
 //    LOGE("read %d  %d", chars[0], chars[chars_len- 1]);
     int ret = 0;
-    if(NULL != srcQueue) {
+    if(NULL != srcQueue && running) {
         SrcData *q = queue_pop(srcQueue, &mutexSrc, &condSrc);
         if (NULL != q) {
             count++;
@@ -313,7 +314,7 @@ void decode_audio(Player *player, AVPacket *packet) {
 void *decode_data(void *arg) {
     struct DecoderData *decoderData = arg;
     int index = decoderData->index;
-    for (;;) {
+    while (running) {
         pthread_mutex_lock(&player->mutex);
         LOGE("%s", "decode_data");
         AVPacket *pkt = queue_pop(player->queues[index], &player->mutex, &player->cond);
@@ -338,7 +339,7 @@ void destroy_player(struct Player *player) {
     int i = 0;
     for (i = 0; i < MAX_STREAM; i++) {
         if (NULL != player->codecCtx[i]) {
-            LOGE("%d", player->codecCtx[i]);
+//            LOGE("%d", player->codecCtx[i]);
 //			avcodec_close(player->codecCtx[i]);
         }
     }
@@ -348,11 +349,7 @@ void destroy_player(struct Player *player) {
 void *read_from_stream(void *arg) {
     AVPacket packet, *pkt = &packet;
     int ret;
-    for (;;) {
-//        if(!isInput) {
-//            LOGE("%s %d", "read_from_stream break ", isInput);
-//            continue;
-//        }
+    while (running) {
         ret = av_read_frame(player->input_format_ctx, pkt);
         //到文件结尾了
         if (ret < 0) {
@@ -407,6 +404,17 @@ JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_input(JNIEnv *env,
     //release
 }
 
+JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_deInit(JNIEnv *env,
+                                                                 jclass jcls) {
+    if(!init)
+        return;
+    init = 0;
+    running = 0;
+    for (int i = 0; i < player->stream_no; ++i) {
+        queue_release(player->queues[i], NULL,&player->cond);
+    }
+    queue_release(srcQueue, NULL,&condSrc);
+}
 JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_init(JNIEnv *env,
                                                                  jclass jcls,
                                                                  jobject surface) {
@@ -438,6 +446,7 @@ JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_init(JNIEnv *env,
     pthread_cond_init(&condSrc, NULL);
     player->start_time = 0;
 
+    running = 1;
     //创建读线程
     pthread_create(&player->thread_read_from_stream, NULL, read_from_stream, player);
 
@@ -447,14 +456,14 @@ JNIEXPORT void JNICALL Java_com_libwuwind_player_VideoUtils_init(JNIEnv *env,
 //    pthread_create(&player->decode_threads[audio_stream_index], NULL, decode_data, &data2);
 
     pthread_join(player->thread_read_from_stream, NULL);
-//    pthread_join(player->decode_threads[audio_stream_index], NULL);
+    pthread_join(player->decode_threads[video_stream_index], NULL);
 //    pthread_join(player->decode_threads[audio_stream_index], NULL);
 
 //
 //	(*env)->ReleaseStringUTFChars(env, input_jstr, input_cstr);
-//	destroy_player(player);
+	destroy_player(player);
 
-    LOGI("avcodec_close");
+    LOGI("destroy_player");
 }
 
 #pragma clang diagnostic pop

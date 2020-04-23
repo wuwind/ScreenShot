@@ -18,3 +18,5 @@ void *queue_push(Queue *,pthread_mutex_t*, pthread_cond_t*);
 
 void *queue_pop(Queue *,pthread_mutex_t*, pthread_cond_t*);
 
+void queue_release(Queue *queue,pthread_mutex_t* mutex, pthread_cond_t* cond);
+

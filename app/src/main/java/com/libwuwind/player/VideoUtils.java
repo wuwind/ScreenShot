@@ -22,6 +22,10 @@ public class VideoUtils {
     }
 
     public static native void input(byte[] datas);
+
     public static native void init(Surface surface);
+
+    public static native void deInit();
+
     public static native void show();
 }

@@ -6,6 +6,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -15,8 +16,10 @@ import java.util.TimerTask;
  */
 
 public class TcpClientThread extends Thread {
-    private final int port = 6111;
-    private String ip = "172.18.6.8";
+    //    private final int port = 6111;
+//    private String ip = "172.18.6.8";
+    private final int port = 6003;
+    private String ip = "120.79.223.156";
     private BufferedInputStream inputStream;
     private BufferedOutputStream outputStream;
     private boolean isRuning;
@@ -58,7 +61,8 @@ public class TcpClientThread extends Thread {
         super.run();
         try {
             Log.e("---", "等待连接");
-            socket = new Socket(ip, port);
+            socket = new Socket();
+            socket.connect(new InetSocketAddress(ip, port), 10 * 1000);//设置连接请求超时时间1 s
             Log.e("---", "连接成功");
             timer.schedule(timerTask, 0, 1000);
             inputStream = new BufferedInputStream(socket.getInputStream());
@@ -83,8 +87,8 @@ public class TcpClientThread extends Thread {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            close();
         }
-        close();
     }
 
     private void paseTeacherMessage(byte[] data) {
@@ -112,23 +116,6 @@ public class TcpClientThread extends Thread {
                 | ((ary[offset + 2] << 16) & 0xFF0000)
                 | ((ary[offset + 3] << 24) & 0xFF000000));
         return value;
-    }
-
-    private void closeConn() {
-
-        try {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (outputStream != null) {
-                outputStream.close();
-            }
-            if (socket != null) {
-                socket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public void sendMessage(byte[] data) {
@@ -167,7 +154,7 @@ public class TcpClientThread extends Thread {
         isRuning = false;
         if (null != timer)
             timer.cancel();
-        if(null != socket) {
+        if (null != socket) {
             try {
                 socket.close();
             } catch (IOException e) {
